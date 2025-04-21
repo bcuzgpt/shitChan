@@ -5,18 +5,132 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  line-height: 1.6;
-  color: #333;
+  font-family: arial, helvetica, sans-serif;
+  font-size: 10pt;
+  background-color: #EEF2FF;
+  color: #000000;
+  line-height: 1.2;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+a {
+  color: #34345C;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #B7C5D9;
+  height: 0;
+}
+
+form {
+  margin-bottom: 12px;
+}
+
+input[type="text"], 
+input[type="password"], 
+textarea {
+  border: 1px solid #aaa;
+  font-family: arial, helvetica, sans-serif;
+  font-size: 10pt;
+  outline: none;
+  padding: 2px 4px;
+  background-color: #fff;
+}
+
+input[type="submit"], 
+button {
+  background-color: #d9d9d9;
+  border: 1px solid #aaa;
+  color: #000;
+  cursor: pointer;
+  font-family: arial, helvetica, sans-serif;
+  font-size: 10pt;
+  padding: 2px 6px;
+}
+
+input[type="submit"]:hover, 
+button:hover {
+  background-color: #c9c9c9;
+}
+
+.board-title {
+  color: #AF0A0F;
+  font-weight: bold;
+  font-size: 28px;
+  letter-spacing: -2px;
+}
+
+.thread {
+  margin: 4px 0;
+  padding: 4px 0;
+}
+
+.post {
+  display: table;
+  padding: 4px 10px;
+  margin: 4px 0;
+  background-color: #d6daf0;
+  border-radius: 0;
+  border: 1px solid #b7c5d9;
+  max-width: 100%;
+}
+
+.post.op {
+  background-color: #d6daf0;
+}
+
+.post.reply {
+  background-color: #d6daf0;
+  margin-left: 20px;
+  margin-bottom: 4px;
+}
+
+.post-header {
+  font-size: 10pt;
+  color: #117743;
+  font-weight: bold;
+}
+
+.post-number {
+  color: #000;
+  font-size: 10pt;
+}
+
+.post-image {
+  float: left;
+  margin: 3px 20px 5px 0;
+  border: 1px solid #ccc;
+}
+
+.post-content {
+  margin: 12px 40px 12px 0;
+  color: #000;
+  font-size: 10pt;
+  word-wrap: break-word;
+}
+
+.greentext {
+  color: #789922;
+}
+
+.form-table {
+  margin: 8px 0;
+}
+
+.form-table td {
+  padding: 1px 4px;
+  font-size: 10pt;
+}
+
+.form-table th {
+  text-align: left;
+  padding: 1px 4px;
+  font-size: 10pt;
 }
 
 /* Custom scrollbar */

@@ -1,70 +1,98 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
 
 const ThreadContainer = styled.div`
-  max-width: 1200px;
+  width: 90%;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 10px 0;
 `;
 
 const ThreadHeader = styled.div`
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #ddd;
+  margin-bottom: 7px;
+  text-align: center;
 `;
 
-const ThreadTitle = styled.h1`
-  font-size: 24px;
-  color: #333;
-  margin-bottom: 10px;
+const BoardTitle = styled.h1`
+  color: #AF0A0F;
+  font-weight: bold;
+  font-size: 28px;
+  letter-spacing: -2px;
 `;
 
-const ThreadContent = styled.div`
-  background-color: white;
-  padding: 20px;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
+const BoardLink = styled(Link)`
+  margin-right: 5px;
 `;
 
-const ThreadText = styled.p`
-  margin-bottom: 15px;
-  line-height: 1.6;
+const PostForm = styled.form`
+  background-color: #E0EDF5;
+  border: 1px solid #B7C5D9;
+  padding: 5px;
+  margin: 10px 0;
+  display: ${props => props.visible ? 'block' : 'none'};
 `;
 
-const ThreadImage = styled.img`
-  max-width: 100%;
-  height: auto;
-  margin-top: 10px;
-  display: block;
+const FormTable = styled.table`
+  margin: 0;
+  width: 100%;
 `;
 
-const ThreadMeta = styled.div`
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 10px;
+const ThreadBox = styled.div`
+  background-color: #F0E0D6;
+  border: 1px solid #D9BFB7;
+  margin-bottom: 7px;
 `;
 
-const RepliesSection = styled.div`
-  margin-top: 30px;
+const Post = styled.div`
+  padding: 4px 10px;
+  overflow: hidden;
+  clear: both;
+`;
+
+const PostFile = styled.div`
+  float: left;
+  margin: 3px 20px 5px 0;
+`;
+
+const PostImage = styled.img`
+  max-width: ${props => props.op ? '250px' : '150px'};
+  max-height: ${props => props.op ? '250px' : '150px'};
+  border: 1px solid #ccc;
+`;
+
+const PostHeader = styled.div`
+  color: #117743;
+  font-weight: bold;
+  font-size: 10pt;
+  margin-bottom: 5px;
+`;
+
+const PostNumber = styled.span`
+  color: #000;
+  font-weight: normal;
+`;
+
+const PostContent = styled.div`
+  margin: 5px 0;
+  font-size: 10pt;
+`;
+
+const PostFormToggleButton = styled.button`
+  margin: 5px 0;
+  width: 100px;
+`;
+
+const ReplyContainer = styled.div`
+  border-top: 1px solid #D9BFB7;
+  margin-top: 5px;
+  padding-top: 5px;
 `;
 
 const Reply = styled.div`
-  background-color: white;
-  padding: 15px;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 15px;
-`;
-
-const ReplyText = styled.p`
-  margin-bottom: 10px;
-`;
-
-const ReplyMeta = styled.div`
-  font-size: 12px;
-  color: #888;
+  background-color: #F0E0D6;
+  border: 1px solid #D9BFB7;
+  margin: 4px 0;
 `;
 
 const Thread = () => {
@@ -72,28 +100,46 @@ const Thread = () => {
   const [thread, setThread] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [formVisible, setFormVisible] = useState(false);
+  const [newReply, setNewReply] = useState({
+    name: 'Anonymous',
+    comment: '',
+    file: null
+  });
+  const fileInputRef = useRef(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchThread = async () => {
       try {
         setLoading(true);
-        // Mock data since we don't have a real API yet
+        // In a real app, we would call the API:
+        // const response = await axios.get(`/api/threads/${threadId}`);
+        // setThread(response.data);
+        
+        // Mock data for display
         setThread({
           id: threadId,
-          title: 'Sample Thread Title',
-          content: 'This is a sample thread content with some text to display.',
+          name: 'Anonymous',
+          subject: 'This is a thread title',
+          comment: 'This is the original post content with some text to display.',
           created_at: new Date().toISOString(),
-          image_url: 'https://via.placeholder.com/400x300',
+          image_url: 'https://via.placeholder.com/250',
+          board: 'b',
           replies: [
             {
               id: 1,
-              content: 'This is a reply to the thread.',
+              name: 'Anonymous',
+              comment: 'This is a reply to the thread.',
               created_at: new Date().toISOString(),
+              image_url: null
             },
             {
               id: 2,
-              content: 'Another reply with some text.',
+              name: 'Anonymous',
+              comment: 'Another reply with some text.',
               created_at: new Date().toISOString(),
+              image_url: 'https://via.placeholder.com/150'
             }
           ]
         });
@@ -107,35 +153,191 @@ const Thread = () => {
     fetchThread();
   }, [threadId]);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>{error}</div>;
-  if (!thread) return <div>Thread not found</div>;
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewReply(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e) => {
+    setNewReply(prev => ({ ...prev, file: e.target.files[0] }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!newReply.comment && !newReply.file) {
+      alert('Please enter a comment or select a file');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      // In a real app, we would call the API:
+      // const formData = new FormData();
+      // formData.append('name', newReply.name);
+      // formData.append('comment', newReply.comment);
+      // if (newReply.file) {
+      //   formData.append('image', newReply.file);
+      // }
+      // await axios.post(`/api/threads/${threadId}/replies`, formData);
+      
+      // Simulate API call success
+      setTimeout(() => {
+        // Add new reply to the thread
+        const newReplyObj = {
+          id: (thread.replies.length > 0 ? Math.max(...thread.replies.map(r => r.id)) : 0) + 1,
+          name: newReply.name || 'Anonymous',
+          comment: newReply.comment,
+          created_at: new Date().toISOString(),
+          image_url: newReply.file ? URL.createObjectURL(newReply.file) : null
+        };
+        
+        setThread(prev => ({
+          ...prev,
+          replies: [...prev.replies, newReplyObj]
+        }));
+        
+        // Reset form
+        setNewReply({
+          name: 'Anonymous',
+          comment: '',
+          file: null
+        });
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        setSubmitting(false);
+        setFormVisible(false);
+      }, 1000);
+    } catch (err) {
+      alert('Error posting reply. Please try again.');
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) return <div style={{ textAlign: 'center', margin: '20px' }}>Loading...</div>;
+  if (error) return <div style={{ textAlign: 'center', margin: '20px' }}>{error}</div>;
+  if (!thread) return <div style={{ textAlign: 'center', margin: '20px' }}>Thread not found</div>;
 
   return (
     <ThreadContainer>
       <ThreadHeader>
-        <ThreadTitle>{thread.title}</ThreadTitle>
-        <ThreadMeta>
-          Posted: {new Date(thread.created_at).toLocaleString()}
-        </ThreadMeta>
+        <BoardTitle>
+          <BoardLink to={`/board/${thread.board}`}>/{thread.board}/</BoardLink>
+          {thread.subject && `- ${thread.subject}`}
+        </BoardTitle>
       </ThreadHeader>
-
-      <ThreadContent>
-        <ThreadText>{thread.content}</ThreadText>
-        {thread.image_url && <ThreadImage src={thread.image_url} alt="Thread image" />}
-      </ThreadContent>
-
-      <RepliesSection>
-        <h2>Replies ({thread.replies.length})</h2>
-        {thread.replies.map(reply => (
-          <Reply key={reply.id}>
-            <ReplyText>{reply.content}</ReplyText>
-            <ReplyMeta>
-              Posted: {new Date(reply.created_at).toLocaleString()}
-            </ReplyMeta>
-          </Reply>
-        ))}
-      </RepliesSection>
+      
+      <div style={{ textAlign: 'center' }}>
+        <PostFormToggleButton onClick={() => setFormVisible(!formVisible)}>
+          {formVisible ? 'Hide Form' : 'Post Reply'}
+        </PostFormToggleButton>
+      </div>
+      
+      <PostForm visible={formVisible} onSubmit={handleSubmit}>
+        <FormTable cellSpacing="0">
+          <tbody>
+            <tr>
+              <td>Name</td>
+              <td>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Anonymous"
+                  value={newReply.name}
+                  onChange={handleInputChange}
+                  style={{ width: '200px' }}
+                />
+              </td>
+            </tr>
+            <tr>
+              <td>Comment</td>
+              <td>
+                <textarea
+                  name="comment"
+                  rows="5"
+                  value={newReply.comment}
+                  onChange={handleInputChange}
+                  style={{ width: '400px' }}
+                ></textarea>
+              </td>
+            </tr>
+            <tr>
+              <td>File</td>
+              <td>
+                <input
+                  type="file"
+                  onChange={handleFileChange}
+                  ref={fileInputRef}
+                  accept="image/*"
+                />
+              </td>
+            </tr>
+            <tr>
+              <td></td>
+              <td>
+                <input
+                  type="submit"
+                  value="Post Reply"
+                  disabled={submitting}
+                />
+              </td>
+            </tr>
+          </tbody>
+        </FormTable>
+      </PostForm>
+      
+      <ThreadBox>
+        <Post>
+          <PostHeader>
+            {thread.subject && <span style={{ color: '#0F0C5D' }}>{thread.subject}</span>}{' '}
+            {thread.name} {new Date(thread.created_at).toLocaleString()} <PostNumber>No.{thread.id}</PostNumber>
+          </PostHeader>
+          
+          {thread.image_url && (
+            <PostFile>
+              <PostImage src={thread.image_url} alt="Thread attachment" op={true} />
+              <div style={{ fontSize: '9pt', textAlign: 'center' }}>
+                250x250
+              </div>
+            </PostFile>
+          )}
+          
+          <PostContent>{thread.comment}</PostContent>
+          <div style={{ clear: 'both' }}></div>
+        </Post>
+        
+        {thread.replies.length > 0 && (
+          <ReplyContainer>
+            {thread.replies.map(reply => (
+              <Reply key={reply.id}>
+                <Post>
+                  <PostHeader>
+                    {reply.name} {new Date(reply.created_at).toLocaleString()} <PostNumber>No.{reply.id}</PostNumber>
+                  </PostHeader>
+                  
+                  {reply.image_url && (
+                    <PostFile>
+                      <PostImage src={reply.image_url} alt="Reply attachment" />
+                      <div style={{ fontSize: '9pt', textAlign: 'center' }}>
+                        150x150
+                      </div>
+                    </PostFile>
+                  )}
+                  
+                  <PostContent>{reply.comment}</PostContent>
+                  <div style={{ clear: 'both' }}></div>
+                </Post>
+              </Reply>
+            ))}
+          </ReplyContainer>
+        )}
+      </ThreadBox>
+      
+      <div style={{ textAlign: 'center', marginTop: '10px' }}>
+        <PostFormToggleButton onClick={() => setFormVisible(!formVisible)}>
+          {formVisible ? 'Hide Form' : 'Post Reply'}
+        </PostFormToggleButton>
+      </div>
     </ThreadContainer>
   );
 };

@@ -2,70 +2,73 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 
-const HeaderContainer = styled.header`
-  background-color: #2c3e50;
-  color: white;
-  padding: 1rem 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+const HeaderContainer = styled.div`
+  background-color: #D6DAF0;
+  border-bottom: 1px solid #B7C5D9;
+  color: #000;
+  padding: 5px 0;
 `;
 
 const HeaderContent = styled.div`
-  max-width: 1200px;
+  width: 90%;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 0 20px;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
 `;
 
-const Logo = styled(Link)`
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: white;
-  text-decoration: none;
-  
-  &:hover {
-    text-decoration: none;
-    color: #ecf0f1;
-  }
-`;
-
-const Navigation = styled.nav`
+const BoardNavigation = styled.div`
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 5px 0;
+  font-size: 11px;
 `;
 
 const BoardLink = styled(Link)`
-  color: white;
-  text-decoration: none;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  margin: 0 5px;
+  font-weight: bold;
   
   &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    text-decoration: none;
+    text-decoration: underline;
   }
+`;
+
+const SiteName = styled.div`
+  font-size: 28px;
+  font-weight: bold;
+  color: #AF0A0F;
+  text-align: center;
+  letter-spacing: -2px;
+  margin: 5px 0;
 `;
 
 const Header = () => {
   // List of boards
   const boards = [
+    { name: 'a', title: 'Anime & Manga' },
     { name: 'b', title: 'Random' },
     { name: 'g', title: 'Technology' },
-    { name: 'a', title: 'Anime' },
+    { name: 'v', title: 'Video Games' },
+    { name: 'pol', title: 'Politically Incorrect' },
+    { name: 'sci', title: 'Science & Math' }
   ];
 
   return (
     <HeaderContainer>
       <HeaderContent>
-        <Logo to="/">shitChan</Logo>
-        <Navigation>
-          {boards.map((board) => (
-            <BoardLink key={board.name} to={`/board/${board.name}`}>
-              /{board.name}/ - {board.title}
-            </BoardLink>
+        <SiteName>shitChan</SiteName>
+        <BoardNavigation>
+          {boards.map((board, index) => (
+            <React.Fragment key={board.name}>
+              <BoardLink to={`/board/${board.name}`}>
+                /{board.name}/ - {board.title}
+              </BoardLink>
+              {index < boards.length - 1 && ' / '}
+            </React.Fragment>
           ))}
-        </Navigation>
+        </BoardNavigation>
       </HeaderContent>
     </HeaderContainer>
   );
