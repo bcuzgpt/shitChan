@@ -44,6 +44,21 @@ const SiteName = styled.div`
   margin: 5px 0;
 `;
 
+const Footer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: 5px;
+  font-size: 8pt;
+`;
+
+const FooterLink = styled(Link)`
+  margin: 0 5px;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 const Header = () => {
   // List of boards
   const boards = [
@@ -69,6 +84,11 @@ const Header = () => {
             </React.Fragment>
           ))}
         </BoardNavigation>
+        <Footer>
+          <FooterLink to="/terms">Terms of Service</FooterLink>
+          <span>•</span>
+          <FooterLink to="/privacy">Privacy Policy</FooterLink>
+        </Footer>
       </HeaderContent>
     </HeaderContainer>
   );

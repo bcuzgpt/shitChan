@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
+import axios from 'axios';
 
 const ThreadContainer = styled.div`
   width: 90%;
@@ -113,38 +114,12 @@ const Thread = () => {
     const fetchThread = async () => {
       try {
         setLoading(true);
-        // In a real app, we would call the API:
-        // const response = await axios.get(`/api/threads/${threadId}`);
-        // setThread(response.data);
-        
-        // Mock data for display
-        setThread({
-          id: threadId,
-          name: 'Anonymous',
-          subject: 'This is a thread title',
-          comment: 'This is the original post content with some text to display.',
-          created_at: new Date().toISOString(),
-          image_url: 'https://via.placeholder.com/250',
-          board: 'b',
-          replies: [
-            {
-              id: 1,
-              name: 'Anonymous',
-              comment: 'This is a reply to the thread.',
-              created_at: new Date().toISOString(),
-              image_url: null
-            },
-            {
-              id: 2,
-              name: 'Anonymous',
-              comment: 'Another reply with some text.',
-              created_at: new Date().toISOString(),
-              image_url: 'https://via.placeholder.com/150'
-            }
-          ]
-        });
+        // Real API call
+        const response = await axios.get(`/api/threads/${threadId}`);
+        setThread(response.data);
         setLoading(false);
       } catch (err) {
+        console.error('Error fetching thread:', err);
         setError('Error loading thread. Please try again later.');
         setLoading(false);
       }
@@ -171,44 +146,44 @@ const Thread = () => {
 
     try {
       setSubmitting(true);
-      // In a real app, we would call the API:
-      // const formData = new FormData();
-      // formData.append('name', newReply.name);
-      // formData.append('comment', newReply.comment);
-      // if (newReply.file) {
-      //   formData.append('image', newReply.file);
-      // }
-      // await axios.post(`/api/threads/${threadId}/replies`, formData);
       
-      // Simulate API call success
-      setTimeout(() => {
-        // Add new reply to the thread
-        const newReplyObj = {
-          id: (thread.replies.length > 0 ? Math.max(...thread.replies.map(r => r.id)) : 0) + 1,
-          name: newReply.name || 'Anonymous',
-          comment: newReply.comment,
-          created_at: new Date().toISOString(),
-          image_url: newReply.file ? URL.createObjectURL(newReply.file) : null
-        };
-        
-        setThread(prev => ({
-          ...prev,
-          replies: [...prev.replies, newReplyObj]
-        }));
-        
-        // Reset form
-        setNewReply({
-          name: 'Anonymous',
-          comment: '',
-          file: null
-        });
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+      // Real API call
+      const formData = new FormData();
+      formData.append('name', newReply.name || 'Anonymous');
+      formData.append('comment', newReply.comment);
+      if (newReply.file) {
+        formData.append('image', newReply.file);
+      }
+      
+      const response = await axios.post(
+        `/api/threads/${threadId}/replies`, 
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
         }
-        setSubmitting(false);
-        setFormVisible(false);
-      }, 1000);
+      );
+      
+      // Add the new reply to the thread
+      setThread(prev => ({
+        ...prev,
+        replies: [...prev.replies, response.data]
+      }));
+      
+      // Reset form
+      setNewReply({
+        name: 'Anonymous',
+        comment: '',
+        file: null
+      });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setSubmitting(false);
+      setFormVisible(false);
     } catch (err) {
+      console.error('Error posting reply:', err);
       alert('Error posting reply. Please try again.');
       setSubmitting(false);
     }

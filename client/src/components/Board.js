@@ -126,33 +126,12 @@ const Board = () => {
     const fetchThreads = async () => {
       try {
         setLoading(true);
-        // In a real app, we would call the API:
-        // const response = await axios.get(`/api/boards/${boardName}/threads`);
-        // setThreads(response.data.threads);
-        
-        // Mock data for display
-        setThreads([
-          {
-            id: 1,
-            name: 'Anonymous',
-            subject: 'Welcome to shitChan',
-            comment: 'This is a sample thread showing what the board looks like.',
-            created_at: new Date().toISOString(),
-            image_url: 'https://via.placeholder.com/150',
-            reply_count: 5
-          },
-          {
-            id: 2,
-            name: 'Anonymous',
-            subject: 'Another sample thread',
-            comment: 'This is another example thread on the board.',
-            created_at: new Date().toISOString(),
-            image_url: 'https://via.placeholder.com/150',
-            reply_count: 2
-          }
-        ]);
+        // Real API call
+        const response = await axios.get(`/api/boards/${boardName}/threads`);
+        setThreads(response.data.threads || []);
         setLoading(false);
       } catch (err) {
+        console.error('Error fetching threads:', err);
         setError('Error loading threads. Please try again later.');
         setLoading(false);
       }
@@ -179,45 +158,43 @@ const Board = () => {
 
     try {
       setSubmitting(true);
-      // In a real app, we would call the API:
-      // const formData = new FormData();
-      // formData.append('name', newThread.name);
-      // formData.append('subject', newThread.subject);
-      // formData.append('comment', newThread.comment);
-      // if (newThread.file) {
-      //   formData.append('image', newThread.file);
-      // }
-      // await axios.post(`/api/boards/${boardName}/threads`, formData);
       
-      // Simulate API call success
-      setTimeout(() => {
-        // Add new thread to the list (in a real app, we'd fetch the updated list from the API)
-        const newThreadObj = {
-          id: threads.length + 1,
-          name: newThread.name || 'Anonymous',
-          subject: newThread.subject,
-          comment: newThread.comment,
-          created_at: new Date().toISOString(),
-          image_url: newThread.file ? URL.createObjectURL(newThread.file) : null,
-          reply_count: 0
-        };
-        
-        setThreads([newThreadObj, ...threads]);
-        
-        // Reset form
-        setNewThread({
-          name: 'Anonymous',
-          subject: '',
-          comment: '',
-          file: null
-        });
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+      // Real API call
+      const formData = new FormData();
+      formData.append('name', newThread.name || 'Anonymous');
+      formData.append('subject', newThread.subject);
+      formData.append('comment', newThread.comment);
+      if (newThread.file) {
+        formData.append('image', newThread.file);
+      }
+      
+      const response = await axios.post(
+        `/api/boards/${boardName}/threads`, 
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
         }
-        setSubmitting(false);
-        setFormVisible(false);
-      }, 1000);
+      );
+      
+      // Add the new thread to the list
+      setThreads([response.data, ...threads]);
+      
+      // Reset form
+      setNewThread({
+        name: 'Anonymous',
+        subject: '',
+        comment: '',
+        file: null
+      });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setSubmitting(false);
+      setFormVisible(false);
     } catch (err) {
+      console.error('Error creating thread:', err);
       alert('Error creating thread. Please try again.');
       setSubmitting(false);
     }

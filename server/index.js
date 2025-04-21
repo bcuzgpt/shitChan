@@ -9,6 +9,7 @@ const AWS = require('aws-sdk');
 const path = require('path');
 const fs = require('fs');
 const { sanitizeInput, validateFileUpload, generateSecureFilename } = require('./middleware/security');
+const { moderateContent, spamFilter, validateImage } = require('./middleware/moderation');
 
 const app = express();
 
@@ -121,10 +122,10 @@ app.get('/api/boards/:board/threads', async (req, res) => {
   }
 });
 
-app.post('/api/boards/:board/threads', upload.single('image'), async (req, res) => {
+app.post('/api/boards/:board/threads', upload.single('image'), validateImage, spamFilter, moderateContent, async (req, res) => {
   try {
     const { board } = req.params;
-    const { title, content } = req.body;
+    const { name, subject, comment } = req.body;
     let imageUrl = null;
 
     if (req.file) {
@@ -140,8 +141,8 @@ app.post('/api/boards/:board/threads', upload.single('image'), async (req, res) 
     }
 
     const result = await pool.query(
-      'INSERT INTO threads (board, title, content, image_url) VALUES ($1, $2, $3, $4) RETURNING *',
-      [board, title, content, imageUrl]
+      'INSERT INTO threads (board, name, title, content, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [board, name || 'Anonymous', subject, comment, imageUrl]
     );
 
     res.status(201).json(result.rows[0]);
@@ -182,10 +183,10 @@ app.get('/api/threads/:threadId', async (req, res) => {
 });
 
 // Create a reply
-app.post('/api/threads/:threadId/replies', upload.single('image'), async (req, res) => {
+app.post('/api/threads/:threadId/replies', upload.single('image'), validateImage, spamFilter, moderateContent, async (req, res) => {
   try {
     const { threadId } = req.params;
-    const { content } = req.body;
+    const { name, comment } = req.body;
     let imageUrl = null;
 
     // Check if thread exists
@@ -212,8 +213,8 @@ app.post('/api/threads/:threadId/replies', upload.single('image'), async (req, r
 
     // Insert reply
     const replyResult = await pool.query(
-      'INSERT INTO replies (thread_id, content, image_url) VALUES ($1, $2, $3) RETURNING *',
-      [threadId, content, imageUrl]
+      'INSERT INTO replies (thread_id, name, content, image_url) VALUES ($1, $2, $3, $4) RETURNING *',
+      [threadId, name || 'Anonymous', comment, imageUrl]
     );
 
     // Update thread's bumped_at and reply_count
