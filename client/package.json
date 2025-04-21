@@ -1,28 +1,24 @@
 {
   "name": "shitchan-client",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
     "@types/node": "^16.18.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "axios": "^1.6.0",
-    "date-fns": "^2.30.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@types/styled-components": "^5.1.26",
+    "axios": "^1.3.4",
+    "date-fns": "^2.29.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0",
+    "react-router-dom": "^6.8.2",
     "react-scripts": "5.0.1",
-    "styled-components": "^6.1.0",
-    "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "styled-components": "^5.3.8",
+    "typescript": "^4.9.5"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "CI=false react-scripts build",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -45,7 +41,7 @@
     ]
   },
   "devDependencies": {
-    "@types/styled-components": "^5.1.30"
-  },
-  "proxy": "http://localhost:3001"
+    "@types/jest": "^29.4.0",
+    "@types/react-test-renderer": "^18.0.0"
+  }
 } 

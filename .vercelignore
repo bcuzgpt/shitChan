@@ -1,0 +1,13 @@
+.git
+.gitignore
+node_modules
+.env
+.env.local
+*.log
+.DS_Store
+README.md
+server/uploads
+backup-db.sh
+monitor.sh
+shitchan.service
+nginx.conf 

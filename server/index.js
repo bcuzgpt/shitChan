@@ -1,24 +1,55 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { Pool } = require('pg');
 const multer = require('multer');
 const AWS = require('aws-sdk');
+const path = require('path');
+const fs = require('fs');
+const { sanitizeInput, validateFileUpload, generateSecureFilename } = require('./middleware/security');
 
 const app = express();
 const port = process.env.PORT || 3001;
 
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:", "https://*.amazonaws.com"],
+      connectSrc: ["'self'"],
+    },
+  },
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+app.use(limiter);
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}` 
+    : 'http://localhost:3000',
+  methods: ['GET', 'POST', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 // Middleware
-app.use(cors());
 app.use(express.json());
+app.use(sanitizeInput);
 
 // Database setup
 const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // AWS S3 setup
@@ -28,12 +59,21 @@ const s3 = new AWS.S3({
   region: process.env.AWS_REGION,
 });
 
-// Multer setup for file uploads
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: parseInt(process.env.MAX_FILE_SIZE)
   },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = process.env.ALLOWED_FILE_TYPES.split(',');
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
 });
 
 // Routes
@@ -218,4 +258,7 @@ app.delete('/api/threads/:threadId', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
-}); 
+});
+
+// Export the Express API
+module.exports = app; 
