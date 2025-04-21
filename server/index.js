@@ -11,7 +11,6 @@ const fs = require('fs');
 const { sanitizeInput, validateFileUpload, generateSecureFilename } = require('./middleware/security');
 
 const app = express();
-const port = process.env.PORT || 3001;
 
 // Security middleware
 app.use(helmet({
@@ -256,9 +255,25 @@ app.delete('/api/threads/:threadId', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+// For error tracking in serverless environment
+const errorHandler = (err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    message: 'An unexpected error occurred',
+    error: process.env.NODE_ENV === 'production' ? null : err.message
+  });
+};
 
-// Export the Express API
+// Apply error handler middleware
+app.use(errorHandler);
+
+// For Vercel serverless environment
+if (process.env.NODE_ENV !== 'production') {
+  const port = process.env.PORT || 3001;
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
+
+// Export for serverless functions
 module.exports = app; 
