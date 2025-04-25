@@ -15,39 +15,28 @@
   ],
   "routes": [
     {
+      "src": "/api/health",
+      "dest": "/server/index.js"
+    },
+    {
       "src": "/api/(.*)",
-      "dest": "/server/index.js",
-      "headers": {
-        "cache-control": "no-cache"
-      }
+      "dest": "/server/index.js"
     },
     {
       "src": "/uploads/(.*)",
-      "dest": "/server/uploads/$1",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable"
-      }
+      "dest": "/server/uploads/$1"
     },
     {
       "src": "/static/(.*)",
-      "dest": "/client/build/static/$1",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable"
-      }
+      "dest": "/client/build/static/$1"
     },
     {
       "src": "/(.*\\.(js|css|ico|png|jpg|jpeg|gif|svg|webp))",
-      "dest": "/client/build/$1",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable"
-      }
+      "dest": "/client/build/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/client/build/index.html",
-      "headers": {
-        "cache-control": "no-cache"
-      }
+      "dest": "/client/build/index.html"
     }
   ]
 } 

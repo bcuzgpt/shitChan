@@ -83,7 +83,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   }
 }));
 
+// Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../client/build')));
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // API Routes
 app.get('/api/boards/:board/threads', async (req, res) => {
@@ -257,9 +263,10 @@ app.post('/api/replies/:replyId/delete', async (req, res) => {
   }
 });
 
-// Handle client-side routing
+// Handle client-side routing - this should be the last route
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
 });
 
+// For Vercel
 module.exports = app; 
