@@ -70,41 +70,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../client/build')));
 
-// Handle client-side routing
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
-});
-
-// Helper function to generate tripcode
-function generateTripcode(tripcode) {
-  if (!tripcode) return null;
-  
-  // Extract name and tripcode if in format "name#tripcode"
-  let name = null;
-  let trip = tripcode;
-  
-  if (tripcode.includes('#')) {
-    const parts = tripcode.split('#');
-    name = parts[0];
-    trip = parts[1];
-  }
-  
-  // Generate tripcode hash (simplified version)
-  const hash = crypto.createHash('sha256').update(trip).digest('hex').substring(0, 10);
-  
-  return {
-    name: name,
-    tripcode: hash
-  };
-}
-
-// Helper function to hash password
-function hashPassword(password) {
-  if (!password) return null;
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
-
-// Routes
+// API routes should be defined before the catch-all route
 app.get('/api/boards/:board/threads', async (req, res) => {
   try {
     const { board } = req.params;
@@ -336,6 +302,11 @@ app.post('/api/replies/:replyId/delete', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Handle client-side routing - this should be the last route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
 });
 
 // For Vercel

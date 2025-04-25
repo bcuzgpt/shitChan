@@ -16,23 +16,23 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "server/index.js"
+      "dest": "/server/index.js"
     },
     {
       "src": "/uploads/(.*)",
-      "dest": "server/uploads/$1"
+      "dest": "/server/uploads/$1"
     },
     {
       "src": "/static/(.*)",
-      "dest": "client/build/static/$1"
+      "dest": "/client/build/static/$1"
     },
     {
-      "src": "/[^.]+",
-      "dest": "client/build/index.html"
+      "src": "/(.*\\.(js|css|ico|png|jpg|jpeg|gif|svg|webp))",
+      "dest": "/client/build/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "client/build/$1"
+      "dest": "/client/build/index.html"
     }
   ]
 } 
