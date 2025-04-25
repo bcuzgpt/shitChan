@@ -68,7 +68,7 @@ app.get('/api/boards/:board/threads', async (req, res) => {
 
     // Get threads
     const result = await pool.query(
-      'SELECT * FROM threads WHERE board = $1 ORDER BY bumped_at DESC LIMIT $2 OFFSET $3',
+      'SELECT t.*, t.board as board_name FROM threads t WHERE t.board = $1 ORDER BY t.bumped_at DESC LIMIT $2 OFFSET $3',
       [board, limit, offset]
     );
 
@@ -110,7 +110,7 @@ app.get('/api/threads/:threadId', async (req, res) => {
   try {
     const { threadId } = req.params;
     const threadResult = await pool.query(
-      'SELECT * FROM threads WHERE id = $1',
+      'SELECT t.*, t.board as board_name FROM threads t WHERE t.id = $1',
       [threadId]
     );
 
