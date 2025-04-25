@@ -10,7 +10,12 @@
     },
     {
       "src": "api/index.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "server/**"
+        ]
+      }
     }
   ],
   "routes": [
@@ -20,7 +25,7 @@
     },
     {
       "src": "/uploads/(.*)",
-      "dest": "/server/uploads/$1"
+      "dest": "/api/index.js"
     },
     {
       "src": "/static/(.*)",
