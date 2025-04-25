@@ -13,16 +13,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Configure multer for file uploads
+// Configure multer for file uploads with optimized settings
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: (req, file, cb) => {
     const uploadDir = path.join(__dirname, 'uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
-  filename: function (req, file, cb) {
+  filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, uniqueSuffix + ext);
@@ -44,7 +44,29 @@ const upload = multer({
   }
 });
 
-// Serve uploaded files with proper MIME types
+// Helper functions
+const generateTripcode = (tripcode) => {
+  if (!tripcode) return null;
+  
+  let name = null;
+  let trip = tripcode;
+  
+  if (tripcode.includes('#')) {
+    const parts = tripcode.split('#');
+    name = parts[0];
+    trip = parts[1];
+  }
+  
+  const hash = crypto.createHash('sha256').update(trip).digest('hex').substring(0, 10);
+  return { name, tripcode: hash };
+};
+
+const hashPassword = (password) => {
+  if (!password) return null;
+  return crypto.createHash('sha256').update(password).digest('hex');
+};
+
+// Serve static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res, path) => {
     const ext = path.split('.').pop().toLowerCase();
@@ -61,10 +83,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   }
 }));
 
-// Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../client/build')));
 
-// API routes should be defined before the catch-all route
+// API Routes
 app.get('/api/boards/:board/threads', async (req, res) => {
   try {
     const { board } = req.params;
@@ -72,27 +93,22 @@ app.get('/api/boards/:board/threads', async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
-    // Get total count
-    const countResult = await pool.query(
-      'SELECT COUNT(*) FROM threads WHERE board = $1',
-      [board]
-    );
-    const total = parseInt(countResult.rows[0].count);
-
-    // Get threads
-    const result = await pool.query(
-      'SELECT t.*, t.board as board_name FROM threads t WHERE t.board = $1 ORDER BY t.bumped_at DESC LIMIT $2 OFFSET $3',
-      [board, limit, offset]
-    );
+    const [countResult, threadsResult] = await Promise.all([
+      pool.query('SELECT COUNT(*) FROM threads WHERE board = $1', [board]),
+      pool.query(
+        'SELECT t.*, t.board as board_name FROM threads t WHERE t.board = $1 ORDER BY t.bumped_at DESC LIMIT $2 OFFSET $3',
+        [board, limit, offset]
+      )
+    ]);
 
     res.json({
-      threads: result.rows,
-      total: total,
-      page: page,
-      limit: limit
+      threads: threadsResult.rows,
+      total: parseInt(countResult.rows[0].count),
+      page,
+      limit
     });
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching threads:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -101,42 +117,21 @@ app.post('/api/boards/:board/threads', upload.single('image'), async (req, res) 
   try {
     const { board } = req.params;
     const { name, subject, comment, tripcode, password, sage } = req.body;
-    let imageUrl = null;
     
-    // Handle tripcode
-    let tripcodeData = null;
-    if (tripcode) {
-      tripcodeData = generateTripcode(tripcode);
-    }
-    
-    // Handle password
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const tripcodeData = tripcode ? generateTripcode(tripcode) : null;
     const passwordHash = password ? hashPassword(password) : null;
-
-    if (req.file) {
-      imageUrl = `/uploads/${req.file.filename}`;
-    }
 
     const result = await pool.query(
       'INSERT INTO threads (board, name, title, content, image_url, tripcode, password_hash, sage) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [
-        board, 
-        name || 'Anonymous', 
-        subject, 
-        comment, 
-        imageUrl,
-        tripcodeData ? JSON.stringify(tripcodeData) : null,
-        passwordHash,
-        sage === 'true'
-      ]
+      [board, name || 'Anonymous', subject, comment, imageUrl, tripcodeData ? JSON.stringify(tripcodeData) : null, passwordHash, sage === 'true']
     );
 
-    // Don't return password hash in response
     const thread = result.rows[0];
     delete thread.password_hash;
-
     res.status(201).json(thread);
   } catch (err) {
-    console.error(err);
+    console.error('Error creating thread:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -144,28 +139,22 @@ app.post('/api/boards/:board/threads', upload.single('image'), async (req, res) 
 app.get('/api/threads/:threadId', async (req, res) => {
   try {
     const { threadId } = req.params;
-    const threadResult = await pool.query(
-      'SELECT t.*, t.board as board_name FROM threads t WHERE t.id = $1',
-      [threadId]
-    );
+    
+    const [threadResult, repliesResult] = await Promise.all([
+      pool.query('SELECT t.*, t.board as board_name FROM threads t WHERE t.id = $1', [threadId]),
+      pool.query('SELECT * FROM replies WHERE thread_id = $1 ORDER BY created_at ASC', [threadId])
+    ]);
 
     if (threadResult.rows.length === 0) {
       return res.status(404).json({ error: 'Thread not found' });
     }
 
-    const repliesResult = await pool.query(
-      'SELECT * FROM replies WHERE thread_id = $1 ORDER BY created_at ASC',
-      [threadId]
-    );
-
-    const thread = {
+    res.json({
       ...threadResult.rows[0],
-      replies: repliesResult.rows,
-    };
-
-    res.json(thread);
+      replies: repliesResult.rows
+    });
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching thread:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -174,60 +163,37 @@ app.post('/api/threads/:threadId/replies', upload.single('image'), async (req, r
   try {
     const { threadId } = req.params;
     const { name, comment, tripcode, password, sage } = req.body;
-    let imageUrl = null;
     
-    // Handle tripcode
-    let tripcodeData = null;
-    if (tripcode) {
-      tripcodeData = generateTripcode(tripcode);
-    }
-    
-    // Handle password
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const tripcodeData = tripcode ? generateTripcode(tripcode) : null;
     const passwordHash = password ? hashPassword(password) : null;
-
-    if (req.file) {
-      imageUrl = `/uploads/${req.file.filename}`;
-    }
 
     const replyResult = await pool.query(
       'INSERT INTO replies (thread_id, name, content, image_url, tripcode, password_hash, sage) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [
-        threadId, 
-        name || 'Anonymous', 
-        comment, 
-        imageUrl,
-        tripcodeData ? JSON.stringify(tripcodeData) : null,
-        passwordHash,
-        sage === 'true'
-      ]
+      [threadId, name || 'Anonymous', comment, imageUrl, tripcodeData ? JSON.stringify(tripcodeData) : null, passwordHash, sage === 'true']
     );
 
-    // Only bump thread if not saged
     if (sage !== 'true') {
       await pool.query(
         'UPDATE threads SET bumped_at = CURRENT_TIMESTAMP, reply_count = reply_count + 1 WHERE id = $1',
         [threadId]
       );
     } else {
-      // Still increment reply count but don't bump
       await pool.query(
         'UPDATE threads SET reply_count = reply_count + 1 WHERE id = $1',
         [threadId]
       );
     }
 
-    // Don't return password hash in response
     const reply = replyResult.rows[0];
     delete reply.password_hash;
-
     res.status(201).json(reply);
   } catch (err) {
-    console.error(err);
+    console.error('Error creating reply:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Add endpoint for post deletion
 app.post('/api/threads/:threadId/delete', async (req, res) => {
   try {
     const { threadId } = req.params;
@@ -238,8 +204,6 @@ app.post('/api/threads/:threadId/delete', async (req, res) => {
     }
     
     const passwordHash = hashPassword(password);
-    
-    // Check if thread exists and password matches
     const threadResult = await pool.query(
       'SELECT * FROM threads WHERE id = $1 AND password_hash = $2',
       [threadId, passwordHash]
@@ -249,13 +213,14 @@ app.post('/api/threads/:threadId/delete', async (req, res) => {
       return res.status(403).json({ error: 'Invalid password or thread not found' });
     }
     
-    // Delete thread and all replies
-    await pool.query('DELETE FROM replies WHERE thread_id = $1', [threadId]);
-    await pool.query('DELETE FROM threads WHERE id = $1', [threadId]);
+    await Promise.all([
+      pool.query('DELETE FROM replies WHERE thread_id = $1', [threadId]),
+      pool.query('DELETE FROM threads WHERE id = $1', [threadId])
+    ]);
     
     res.json({ success: true, message: 'Thread deleted successfully' });
   } catch (err) {
-    console.error(err);
+    console.error('Error deleting thread:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -270,8 +235,6 @@ app.post('/api/replies/:replyId/delete', async (req, res) => {
     }
     
     const passwordHash = hashPassword(password);
-    
-    // Check if reply exists and password matches
     const replyResult = await pool.query(
       'SELECT * FROM replies WHERE id = $1 AND password_hash = $2',
       [replyId, passwordHash]
@@ -281,27 +244,22 @@ app.post('/api/replies/:replyId/delete', async (req, res) => {
       return res.status(403).json({ error: 'Invalid password or reply not found' });
     }
     
-    // Delete reply
-    await pool.query('DELETE FROM replies WHERE id = $1', [replyId]);
-    
-    // Update thread reply count
     const threadId = replyResult.rows[0].thread_id;
-    await pool.query(
-      'UPDATE threads SET reply_count = reply_count - 1 WHERE id = $1',
-      [threadId]
-    );
+    await Promise.all([
+      pool.query('DELETE FROM replies WHERE id = $1', [replyId]),
+      pool.query('UPDATE threads SET reply_count = reply_count - 1 WHERE id = $1', [threadId])
+    ]);
     
     res.json({ success: true, message: 'Reply deleted successfully' });
   } catch (err) {
-    console.error(err);
+    console.error('Error deleting reply:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Handle client-side routing - this should be the last route
+// Handle client-side routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
 });
 
-// For Vercel
 module.exports = app; 
