@@ -1,4 +1,9 @@
 const { Pool } = require('pg');
+const { neonConfig } = require('@neondatabase/serverless');
+
+// Configure Neon for serverless environment
+neonConfig.fetchConnectionCache = true;
+neonConfig.webSocketConstructor = require('ws');
 
 // Optimized Neon PostgreSQL connection configuration
 const pool = new Pool({
@@ -6,10 +11,10 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false
   },
-  // Connection pool settings for Vercel serverless environment
-  max: 1, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+  // Connection pool settings optimized for serverless
+  max: 1,
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 30000
 });
 
 // Connection event handlers

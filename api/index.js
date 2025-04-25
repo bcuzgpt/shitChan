@@ -1,5 +1,5 @@
-// Adapter for serverless environment
-const app = require('../server/index');
+// Import the Express app from the server directory
+const app = require('../server/index.js');
 
-// Export for Vercel serverless environment
+// Export the Express app as a serverless function
 module.exports = app; 
