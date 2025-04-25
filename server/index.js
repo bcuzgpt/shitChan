@@ -1,50 +1,16 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const { Pool } = require('pg');
 const multer = require('multer');
-const AWS = require('aws-sdk');
 const path = require('path');
 const fs = require('fs');
-const { sanitizeInput, validateFileUpload, generateSecureFilename } = require('./middleware/security');
-const { moderateContent, spamFilter, validateImage } = require('./middleware/moderation');
 
 const app = express();
 
-// Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "blob:", "https://*.amazonaws.com"],
-      connectSrc: ["'self'"],
-    },
-  },
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use(limiter);
-
-// CORS configuration
-app.use(cors({
-  origin: process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}` 
-    : 'http://localhost:3000',
-  methods: ['GET', 'POST', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-
-// Middleware
+// Basic middleware
+app.use(cors());
 app.use(express.json());
-app.use(sanitizeInput);
 
 // Database setup
 const pool = new Pool({
@@ -52,22 +18,28 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// AWS S3 setup
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION,
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = 'uploads';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir);
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
 });
 
-// Configure multer for file uploads
-const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE)
+    fileSize: 5 * 1024 * 1024 // 5MB
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = process.env.ALLOWED_FILE_TYPES.split(',');
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -76,22 +48,15 @@ const upload = multer({
   }
 });
 
-// Routes
-app.get('/api/boards', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM boards');
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// Serve uploaded files
+app.use('/uploads', express.static('uploads'));
 
+// Routes
 app.get('/api/boards/:board/threads', async (req, res) => {
   try {
     const { board } = req.params;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
     // Get total count
@@ -109,12 +74,9 @@ app.get('/api/boards/:board/threads', async (req, res) => {
 
     res.json({
       threads: result.rows,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+      total: total,
+      page: page,
+      limit: limit
     });
   } catch (err) {
     console.error(err);
@@ -122,22 +84,14 @@ app.get('/api/boards/:board/threads', async (req, res) => {
   }
 });
 
-app.post('/api/boards/:board/threads', upload.single('image'), validateImage, spamFilter, moderateContent, async (req, res) => {
+app.post('/api/boards/:board/threads', upload.single('image'), async (req, res) => {
   try {
     const { board } = req.params;
     const { name, subject, comment } = req.body;
     let imageUrl = null;
 
     if (req.file) {
-      const params = {
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: `${Date.now()}-${req.file.originalname}`,
-        Body: req.file.buffer,
-        ContentType: req.file.mimetype,
-      };
-
-      const uploaded = await s3.upload(params).promise();
-      imageUrl = uploaded.Location;
+      imageUrl = `/uploads/${req.file.filename}`;
     }
 
     const result = await pool.query(
@@ -152,7 +106,6 @@ app.post('/api/boards/:board/threads', upload.single('image'), validateImage, sp
   }
 });
 
-// Get thread details with replies
 app.get('/api/threads/:threadId', async (req, res) => {
   try {
     const { threadId } = req.params;
@@ -182,42 +135,21 @@ app.get('/api/threads/:threadId', async (req, res) => {
   }
 });
 
-// Create a reply
-app.post('/api/threads/:threadId/replies', upload.single('image'), validateImage, spamFilter, moderateContent, async (req, res) => {
+app.post('/api/threads/:threadId/replies', upload.single('image'), async (req, res) => {
   try {
     const { threadId } = req.params;
     const { name, comment } = req.body;
     let imageUrl = null;
 
-    // Check if thread exists
-    const threadResult = await pool.query(
-      'SELECT * FROM threads WHERE id = $1',
-      [threadId]
-    );
-
-    if (threadResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Thread not found' });
-    }
-
     if (req.file) {
-      const params = {
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: `${Date.now()}-${req.file.originalname}`,
-        Body: req.file.buffer,
-        ContentType: req.file.mimetype,
-      };
-
-      const uploaded = await s3.upload(params).promise();
-      imageUrl = uploaded.Location;
+      imageUrl = `/uploads/${req.file.filename}`;
     }
 
-    // Insert reply
     const replyResult = await pool.query(
       'INSERT INTO replies (thread_id, name, content, image_url) VALUES ($1, $2, $3, $4) RETURNING *',
       [threadId, name || 'Anonymous', comment, imageUrl]
     );
 
-    // Update thread's bumped_at and reply_count
     await pool.query(
       'UPDATE threads SET bumped_at = CURRENT_TIMESTAMP, reply_count = reply_count + 1 WHERE id = $1',
       [threadId]
@@ -230,51 +162,5 @@ app.post('/api/threads/:threadId/replies', upload.single('image'), validateImage
   }
 });
 
-// Delete a thread
-app.delete('/api/threads/:threadId', async (req, res) => {
-  try {
-    const { threadId } = req.params;
-
-    // Check if thread exists
-    const threadResult = await pool.query(
-      'SELECT * FROM threads WHERE id = $1',
-      [threadId]
-    );
-
-    if (threadResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Thread not found' });
-    }
-
-    // Delete thread and its replies
-    await pool.query('DELETE FROM replies WHERE thread_id = $1', [threadId]);
-    await pool.query('DELETE FROM threads WHERE id = $1', [threadId]);
-
-    res.status(204).send();
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// For error tracking in serverless environment
-const errorHandler = (err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    message: 'An unexpected error occurred',
-    error: process.env.NODE_ENV === 'production' ? null : err.message
-  });
-};
-
-// Apply error handler middleware
-app.use(errorHandler);
-
-// For Vercel serverless environment
-if (process.env.NODE_ENV !== 'production') {
-  const port = process.env.PORT || 3001;
-  app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-  });
-}
-
-// Export for serverless functions
+// For Vercel
 module.exports = app; 
