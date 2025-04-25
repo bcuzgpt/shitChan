@@ -119,22 +119,12 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
     const formData = new FormData();
     formData.append('comment', content);
     
-    // Add name, tripcode, password, and sage if provided
+    // Add name and sage if provided
     const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
-    const tripcodeInput = document.querySelector('input[name="tripcode"]') as HTMLInputElement;
-    const passwordInput = document.querySelector('input[name="password"]') as HTMLInputElement;
     const sageInput = document.querySelector('input[name="sage"]') as HTMLInputElement;
     
     if (nameInput && nameInput.value) {
       formData.append('name', nameInput.value);
-    }
-    
-    if (tripcodeInput && tripcodeInput.value) {
-      formData.append('tripcode', tripcodeInput.value);
-    }
-    
-    if (passwordInput && passwordInput.value) {
-      formData.append('password', passwordInput.value);
     }
     
     if (sageInput && sageInput.checked) {
@@ -202,20 +192,6 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
             name="name"
             placeholder="Name"
             maxLength={50}
-          />
-          <Input
-            type="text"
-            name="tripcode"
-            placeholder="Tripcode (optional)"
-            maxLength={20}
-          />
-        </FormRow>
-        <FormRow>
-          <Input
-            type="password"
-            name="password"
-            placeholder="Password (required for deletion)"
-            required
           />
           <CheckboxLabel>
             <Checkbox type="checkbox" name="sage" />

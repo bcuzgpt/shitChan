@@ -137,20 +137,8 @@ const ThreadForm: React.FC<ThreadFormProps> = ({ onSubmit, isReply = false }) =>
           placeholder="Name"
           maxLength={50}
         />
-        <Input
-          type="text"
-          name="tripcode"
-          placeholder="Tripcode (optional)"
-          maxLength={20}
-        />
       </FormRow>
       <FormRow>
-        <Input
-          type="password"
-          name="password"
-          placeholder="Password (required for deletion)"
-          required
-        />
         <CheckboxLabel>
           <Checkbox type="checkbox" name="sage" />
           Sage
