@@ -1,26 +1,24 @@
 {
   "name": "shitchan",
   "version": "1.0.0",
-  "description": "A 4chan clone called shitChan",
+  "description": "A 4chan clone",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "nodemon server/index.js",
-    "client": "cd client && npm start"
+    "client": "cd client && npm start",
+    "build": "cd client && npm run build"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "pg": "^8.11.3",
-    "multer": "^1.4.5-lts.1",
-    "aws-sdk": "^2.1532.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "bcrypt": "^5.1.1",
-    "jsonwebtoken": "^9.0.2"
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.10.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.0.1",
+    "nodemon": "^2.0.22"
   }
 } 

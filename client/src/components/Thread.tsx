@@ -74,6 +74,7 @@ const ThreadImage = styled.img`
   cursor: pointer;
   border-radius: 4px;
   transition: transform 0.2s ease-in-out;
+  object-fit: contain;
   
   &:hover {
     transform: scale(1.02);
@@ -141,6 +142,7 @@ const ReplyImage = styled.img`
   cursor: pointer;
   border-radius: 4px;
   transition: transform 0.2s ease-in-out;
+  object-fit: contain;
   
   &:hover {
     transform: scale(1.02);
@@ -159,6 +161,8 @@ const ImageContainer = styled.div`
   position: relative;
   display: inline-block;
   margin-bottom: 15px;
+  max-width: 100%;
+  overflow: hidden;
 `;
 
 const ImageInfo = styled.div`
@@ -323,6 +327,11 @@ const Thread: React.FC<ThreadProps> = ({
               src={thread.image_url} 
               alt="Thread" 
               onClick={() => handleImageClick(thread.image_url!)}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = '/placeholder-image.svg';
+                target.onerror = null;
+              }}
             />
             <ImageInfo>Click to view full size</ImageInfo>
           </ImageContainer>
@@ -352,6 +361,11 @@ const Thread: React.FC<ThreadProps> = ({
                     src={reply.image_url} 
                     alt="Reply" 
                     onClick={() => handleImageClick(reply.image_url!)}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder-image.svg';
+                      target.onerror = null;
+                    }}
                   />
                   <ImageInfo>Click to view full size</ImageInfo>
                 </ImageContainer>
