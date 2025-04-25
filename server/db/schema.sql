@@ -17,8 +17,6 @@ CREATE TABLE IF NOT EXISTS threads (
     title VARCHAR(200),
     content TEXT NOT NULL,
     image_url TEXT,
-    tripcode JSONB,
-    password_hash TEXT,
     sage BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     bumped_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -32,8 +30,6 @@ CREATE TABLE IF NOT EXISTS replies (
     name VARCHAR(50) DEFAULT 'Anonymous',
     content TEXT NOT NULL,
     image_url TEXT,
-    tripcode JSONB,
-    password_hash TEXT,
     sage BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

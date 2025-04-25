@@ -4,7 +4,6 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
 const pool = require('../server/db/config');
 
 const app = express();
@@ -44,30 +43,8 @@ const upload = multer({
   }
 });
 
-// Helper functions
-const generateTripcode = (tripcode) => {
-  if (!tripcode) return null;
-  
-  let name = null;
-  let trip = tripcode;
-  
-  if (tripcode.includes('#')) {
-    const parts = tripcode.split('#');
-    name = parts[0];
-    trip = parts[1];
-  }
-  
-  const hash = crypto.createHash('sha256').update(trip).digest('hex').substring(0, 10);
-  return { name, tripcode: hash };
-};
-
-const hashPassword = (password) => {
-  if (!password) return null;
-  return crypto.createHash('sha256').update(password).digest('hex');
-};
-
 // Serve static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+app.use('/uploads', express.static(path.join(__dirname, '..', 'server', 'uploads'), {
   setHeaders: (res, path) => {
     const ext = path.split('.').pop().toLowerCase();
     const mimeTypes = {
@@ -122,20 +99,16 @@ app.get('/api/boards/:board/threads', async (req, res) => {
 app.post('/api/boards/:board/threads', upload.single('image'), async (req, res) => {
   try {
     const { board } = req.params;
-    const { name, subject, comment, tripcode, password, sage } = req.body;
+    const { name, subject, comment, sage } = req.body;
     
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-    const tripcodeData = tripcode ? generateTripcode(tripcode) : null;
-    const passwordHash = password ? hashPassword(password) : null;
 
     const result = await pool.query(
-      'INSERT INTO threads (board, name, title, content, image_url, tripcode, password_hash, sage) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [board, name || 'Anonymous', subject, comment, imageUrl, tripcodeData ? JSON.stringify(tripcodeData) : null, passwordHash, sage === 'true']
+      'INSERT INTO threads (board, name, title, content, image_url, sage) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [board, name || 'Anonymous', subject, comment, imageUrl, sage === 'true']
     );
 
-    const thread = result.rows[0];
-    delete thread.password_hash;
-    res.status(201).json(thread);
+    res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Error creating thread:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -168,15 +141,13 @@ app.get('/api/threads/:threadId', async (req, res) => {
 app.post('/api/threads/:threadId/replies', upload.single('image'), async (req, res) => {
   try {
     const { threadId } = req.params;
-    const { name, comment, tripcode, password, sage } = req.body;
+    const { name, comment, sage } = req.body;
     
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
-    const tripcodeData = tripcode ? generateTripcode(tripcode) : null;
-    const passwordHash = password ? hashPassword(password) : null;
 
     const replyResult = await pool.query(
-      'INSERT INTO replies (thread_id, name, content, image_url, tripcode, password_hash, sage) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [threadId, name || 'Anonymous', comment, imageUrl, tripcodeData ? JSON.stringify(tripcodeData) : null, passwordHash, sage === 'true']
+      'INSERT INTO replies (thread_id, name, content, image_url, sage) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [threadId, name || 'Anonymous', comment, imageUrl, sage === 'true']
     );
 
     if (sage !== 'true') {
@@ -191,74 +162,9 @@ app.post('/api/threads/:threadId/replies', upload.single('image'), async (req, r
       );
     }
 
-    const reply = replyResult.rows[0];
-    delete reply.password_hash;
-    res.status(201).json(reply);
+    res.status(201).json(replyResult.rows[0]);
   } catch (err) {
     console.error('Error creating reply:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.post('/api/threads/:threadId/delete', async (req, res) => {
-  try {
-    const { threadId } = req.params;
-    const { password } = req.body;
-    
-    if (!password) {
-      return res.status(400).json({ error: 'Password is required for deletion' });
-    }
-    
-    const passwordHash = hashPassword(password);
-    const threadResult = await pool.query(
-      'SELECT * FROM threads WHERE id = $1 AND password_hash = $2',
-      [threadId, passwordHash]
-    );
-    
-    if (threadResult.rows.length === 0) {
-      return res.status(403).json({ error: 'Invalid password or thread not found' });
-    }
-    
-    await Promise.all([
-      pool.query('DELETE FROM replies WHERE thread_id = $1', [threadId]),
-      pool.query('DELETE FROM threads WHERE id = $1', [threadId])
-    ]);
-    
-    res.json({ success: true, message: 'Thread deleted successfully' });
-  } catch (err) {
-    console.error('Error deleting thread:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.post('/api/replies/:replyId/delete', async (req, res) => {
-  try {
-    const { replyId } = req.params;
-    const { password } = req.body;
-    
-    if (!password) {
-      return res.status(400).json({ error: 'Password is required for deletion' });
-    }
-    
-    const passwordHash = hashPassword(password);
-    const replyResult = await pool.query(
-      'SELECT * FROM replies WHERE id = $1 AND password_hash = $2',
-      [replyId, passwordHash]
-    );
-    
-    if (replyResult.rows.length === 0) {
-      return res.status(403).json({ error: 'Invalid password or reply not found' });
-    }
-    
-    const threadId = replyResult.rows[0].thread_id;
-    await Promise.all([
-      pool.query('DELETE FROM replies WHERE id = $1', [replyId]),
-      pool.query('UPDATE threads SET reply_count = reply_count - 1 WHERE id = $1', [threadId])
-    ]);
-    
-    res.json({ success: true, message: 'Reply deleted successfully' });
-  } catch (err) {
-    console.error('Error deleting reply:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
