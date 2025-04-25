@@ -1,23 +1,17 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { Pool } = require('pg');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const pool = require('./db/config');
 
 const app = express();
 
 // Basic middleware
 app.use(cors());
 app.use(express.json());
-
-// Database setup
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
